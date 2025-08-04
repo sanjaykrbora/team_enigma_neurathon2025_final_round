@@ -127,8 +127,8 @@ def fetch_weather_data(latitude, longitude):
     """
     weather_url = (f"{OPEN_METEO_BASE_URL}?latitude={latitude}&longitude={longitude}"
                    f"&hourly=temperature_2m,relative_humidity_2m,windspeed_10m,precipitation"
-                   f"&current_weather=true"  # Include current weather
-                   f"&timeformat=unixtime")  # Use unixtime for accurate time comparison
+                   f"&current_weather=true"
+                   f"&timeformat=unixtime")
     try:
         response = requests.get(weather_url, timeout=10)
         if response.status_code != 200:
@@ -137,7 +137,6 @@ def fetch_weather_data(latitude, longitude):
             
         weather_response = response.json()
         
-        # Verify we have current weather data
         if "current_weather" in weather_response:
             current_time = datetime.datetime.fromtimestamp(weather_response["current_weather"]["time"])
             st.success(f"✅ Successfully retrieved real-time weather data (as of {current_time.strftime('%Y-%m-%d %H:%M')})")
@@ -146,7 +145,6 @@ def fetch_weather_data(latitude, longitude):
         return None
     
     if "hourly" in weather_response:
-        # Include current weather information in additional metadata
         weather_data = weather_response["hourly"]
         weather_data["current_weather"] = weather_response.get("current_weather", {})
         return weather_data
@@ -165,18 +163,41 @@ def fetch_coordinates(location):
     Returns:
         tuple: (latitude, longitude, place_name)
     """
-    url = "https://photon.komoot.io/api/"
+    photon_url = "https://photon.komoot.io/api/"
+    nominatim_url = "https://nominatim.openstreetmap.org/search"
+
+    # Try Photon with retries
+    for attempt in range(3):
+        try:
+            resp = requests.get(photon_url, params={"q": location, "limit": 1}, timeout=15)
+            features = resp.json().get("features", [])
+            if features:
+                coords = features[0].get("geometry", {}).get("coordinates", [None, None])
+                place_name = features[0]["properties"].get("name", location)
+                st.success(f"✅ Coordinates found for {place_name}")
+                return coords[1], coords[0], place_name
+        except Exception as e:
+            st.warning(f"Photon attempt {attempt+1} failed: {e}")
+            time.sleep(2 ** attempt)
+
+    # Fallback to Nominatim
     try:
-        response = requests.get(url, params={"q": location, "limit": 1}, timeout=10)
-        features = response.json().get("features", [])
-        if features:
-            coords = features[0].get("geometry", {}).get("coordinates", [None, None])
-            place_name = features[0]["properties"].get("name", location)
-            st.success(f"✅ Successfully located coordinates for {place_name}")
-            return coords[1], coords[0], place_name
+        resp = requests.get(
+            nominatim_url,
+            params={"q": location, "format": "json", "limit": 1},
+            headers={"User-Agent": "air-quality-monitor/1.0"},
+            timeout=15
+        )
+        results = resp.json()
+        if results:
+            lat = float(results[0]["lat"])
+            lon = float(results[0]["lon"])
+            display = results[0].get("display_name", location)
+            st.success(f"✅ Coordinates found for {display}")
+            return lat, lon, display
     except Exception as e:
-        st.warning(f"Error retrieving coordinates: {e}")
-    
+        st.warning(f"Nominatim fallback failed: {e}")
+
     st.error(f"❌ Could not find coordinates for {location}. Please check the spelling or try another location.")
     return None, None, location
 
@@ -243,17 +264,17 @@ def get_aqi_color(aqi):
         str: Hex color code
     """
     if aqi is None:
-        return "#cccccc"  # Gray for unknown
+        return "#cccccc"
         
     if aqi <= 50:
-        return "#00e400"  # Green
+        return "#00e400"
     elif aqi <= 100:
-        return "#ffff00"  # Yellow
+        return "#ffff00"
     elif aqi <= 150:
-        return "#ff7e00"  # Orange
+        return "#ff7e00"
     elif aqi <= 200:
-        return "#ff0000"  # Red
+        return "#ff0000"
     elif aqi <= 300:
-        return "#99004c"  # Purple
+        return "#99004c"
     else:
-        return "#7e0023"  # Maroon
+        return "#7e0023"
