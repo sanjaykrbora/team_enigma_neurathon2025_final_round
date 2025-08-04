@@ -44,8 +44,7 @@ Enter a location to get started.
 # Add auto-refresh checkbox to sidebar
 with st.sidebar:
     st.header("Location Settings")
-    # FIX: bind directly to session_state.location
-    st.text_input("Enter city, state, or country:", value=st.session_state.location, key="location")
+    location_input = st.text_input("Enter city, state, or country:", "")
     
     # Add some popular cities for quick selection
     st.markdown("### Popular Locations")
@@ -91,7 +90,7 @@ with st.sidebar:
     
     if st.button("Analyze Air Quality", key="main_analyze_btn"):
         st.session_state.analyze_clicked = True
-        st.session_state.location = st.session_state.location.strip()
+        st.session_state.location = location_input
         st.session_state.days = days_for_model
         st.session_state.last_refresh = datetime.now()
 
