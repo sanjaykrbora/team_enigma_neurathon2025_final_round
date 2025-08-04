@@ -27,8 +27,6 @@ if 'analyze_clicked' not in st.session_state:
     st.session_state.analyze_clicked = False
 if 'location' not in st.session_state:
     st.session_state.location = ""
-if 'location_input' not in st.session_state:
-    st.session_state.location_input = ""  # FIX: Added for search input binding
 if 'days' not in st.session_state:
     st.session_state.days = 30
 if 'last_refresh' not in st.session_state:
@@ -46,8 +44,7 @@ Enter a location to get started.
 # Add auto-refresh checkbox to sidebar
 with st.sidebar:
     st.header("Location Settings")
-    # FIX: bind text input to session state
-    st.text_input("Enter city, state, or country:", key="location_input")
+    location_input = st.text_input("Enter city, state, or country:", "")
     
     # Add some popular cities for quick selection
     st.markdown("### Popular Locations")
@@ -93,7 +90,7 @@ with st.sidebar:
     
     if st.button("Analyze Air Quality", key="main_analyze_btn"):
         st.session_state.analyze_clicked = True
-        st.session_state.location = st.session_state.location_input  # FIX: Pull value from bound input
+        st.session_state.location = location_input
         st.session_state.days = days_for_model
         st.session_state.last_refresh = datetime.now()
 
