@@ -27,20 +27,12 @@ if 'analyze_clicked' not in st.session_state:
     st.session_state.analyze_clicked = False
 if 'location' not in st.session_state:
     st.session_state.location = ""
-if 'location_input' not in st.session_state:
-    st.session_state.location_input = ""
 if 'days' not in st.session_state:
     st.session_state.days = 30
 if 'last_refresh' not in st.session_state:
     st.session_state.last_refresh = datetime.now()
 if 'button_clicked' not in st.session_state:
     st.session_state.button_clicked = False
-
-def trigger_analysis(location_value, days_value):
-    st.session_state.analyze_clicked = True
-    st.session_state.location = location_value
-    st.session_state.days = days_value
-    st.session_state.last_refresh = datetime.now()
 
 # Page Header
 st.title("🌬️ Air Quality Monitor & Predictor")
@@ -52,8 +44,8 @@ Enter a location to get started.
 # Add auto-refresh checkbox to sidebar
 with st.sidebar:
     st.header("Location Settings")
-    # Bound input
-    st.text_input("Enter city, state, or country:", key="location_input")
+    # FIX: bind directly to session_state.location
+    st.text_input("Enter city, state, or country:", value=st.session_state.location, key="location")
     
     # Add some popular cities for quick selection
     st.markdown("### Popular Locations")
@@ -67,14 +59,12 @@ with st.sidebar:
             with col1:
                 if st.button(city, key=f"btn_{city}"):
                     st.session_state.location = city
-                    st.session_state.location_input = city  # keep input synced
                     st.session_state.analyze_clicked = True
                     st.session_state.button_clicked = True
         else:
             with col2:
                 if st.button(city, key=f"btn_{city}"):
                     st.session_state.location = city
-                    st.session_state.location_input = city
                     st.session_state.analyze_clicked = True
                     st.session_state.button_clicked = True
     
@@ -100,20 +90,22 @@ with st.sidebar:
             st.write(f"Next refresh in: {next_refresh:.1f} minutes")
     
     if st.button("Analyze Air Quality", key="main_analyze_btn"):
-        loc = st.session_state.location_input.strip() or st.session_state.location
-        trigger_analysis(loc, days_for_model)
+        st.session_state.analyze_clicked = True
+        st.session_state.location = st.session_state.location.strip()
+        st.session_state.days = days_for_model
+        st.session_state.last_refresh = datetime.now()
 
 # Force rerun if a button was clicked
 if st.session_state.button_clicked:
     st.session_state.button_clicked = False
-    st.rerun()
+    st.rerun()  # Changed from st.experimental_rerun()
 
 # Check if auto-refresh is needed
 if 'auto_refresh' in locals() and auto_refresh and st.session_state.analyze_clicked:
     elapsed_time = (datetime.now() - st.session_state.last_refresh).total_seconds() / 60
     if elapsed_time >= refresh_interval:
         st.session_state.last_refresh = datetime.now()
-        st.rerun()
+        st.rerun()  # Changed from st.experimental_rerun()
 
 # Display real-time indicator
 if st.session_state.analyze_clicked:
